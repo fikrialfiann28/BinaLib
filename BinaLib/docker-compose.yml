@@ -16,13 +16,13 @@ services:
       BLS_DB_PASS: binalib_dev_password
     ports:
       - "8080:80"
-    volumes:
-      - ./:/var/www/html
     networks:
       - binalib-network
 
   db:
-    image: mariadb:11
+    build:
+      context: ./database
+      dockerfile: Dockerfile
     container_name: bls-db
     restart: unless-stopped
     environment:
@@ -32,9 +32,12 @@ services:
       MARIADB_PASSWORD: binalib_dev_password
     volumes:
       - bls-db-data:/var/lib/mysql
-      - ./database/migration.sql:/docker-entrypoint-initdb.d/01-migration.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root -p$$MARIADB_ROOT_PASSWORD --silent"]
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -h 127.0.0.1 -u root -p$$MARIADB_ROOT_PASSWORD --silent"
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
