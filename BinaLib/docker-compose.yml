@@ -1,0 +1,66 @@
+services:
+  binalib:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: binalib
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      BLS_DB_HOST: db
+      BLS_DB_PORT: 3306
+      BLS_DB_NAME: bls
+      BLS_DB_USER: binalib
+      BLS_DB_PASS: binalib_dev_password
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - binalib-network
+
+  db:
+    image: mariadb:11
+    container_name: bls-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root_dev_password
+      MARIADB_DATABASE: bls
+      MARIADB_USER: binalib
+      MARIADB_PASSWORD: binalib_dev_password
+    volumes:
+      - bls-db-data:/var/lib/mysql
+      - ./database/migration.sql:/docker-entrypoint-initdb.d/01-migration.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root -p$$MARIADB_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - binalib-network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: bls-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "8081:80"
+    networks:
+      - binalib-network
+
+networks:
+  binalib-network:
+    driver: bridge
+
+volumes:
+  bls-db-data:
